@@ -37,13 +37,37 @@ class _Function(object):
 
     """
 
-    def __init__(self, function, name, arity):
+    def __init__(self, function, name, arity, input_types=None, output_type=None):
         self.function = function
         self.name = name
         self.arity = arity
+        self.input_types = input_types or [object] * self.arity
+        self.output_type = output_type or object
 
-    def __call__(self, *args):
-        return self.function(*args)
+    def __call__(self, *args, **kwargs):
+        return self.function(*args, **kwargs)
+
+
+class _ConstantFunction(_Function):
+
+    def __init__(self, function, name, args=None, kwargs=None, output_type=None):
+        super(_ConstantFunction, self).__init__(
+            function,
+            name,
+            0,
+            input_types=None,
+            output_type=output_type
+        )
+        self.args = args or list()
+        self.kwargs = kwargs or dict()
+    
+    @property
+    def value(self):
+        value = self.function(*self.args, **self.kwargs)
+        return value
+    
+    def __call__(self):
+        return self.value
 
 
 def make_function(*, function, name, arity, wrap=True):
@@ -78,39 +102,15 @@ def make_function(*, function, name, arity, wrap=True):
     """
     if not isinstance(arity, int):
         raise ValueError('arity must be an int, got %s' % type(arity))
-    if not isinstance(function, np.ufunc):
-        if function.__code__.co_argcount != arity:
-            raise ValueError('arity %d does not match required number of '
-                             'function arguments of %d.'
-                             % (arity, function.__code__.co_argcount))
+    # if not isinstance(function, np.ufunc):
+    #     if function.__code__.co_argcount != arity:
+    #         raise ValueError('arity %d does not match required number of '
+    #                          'function arguments of %d.'
+    #                          % (arity, function.__code__.co_argcount))
     if not isinstance(name, str):
         raise ValueError('name must be a string, got %s' % type(name))
     if not isinstance(wrap, bool):
         raise ValueError('wrap must be an bool, got %s' % type(wrap))
-
-    # Check output shape
-    args = [np.ones(10) for _ in range(arity)]
-    try:
-        function(*args)
-    except (ValueError, TypeError):
-        raise ValueError('supplied function %s does not support arity of %d.'
-                         % (name, arity))
-    if not hasattr(function(*args), 'shape'):
-        raise ValueError('supplied function %s does not return a numpy array.'
-                         % name)
-    if function(*args).shape != (10,):
-        raise ValueError('supplied function %s does not return same shape as '
-                         'input vectors.' % name)
-
-    # Check closure for zero & negative input arguments
-    args = [np.zeros(10) for _ in range(arity)]
-    if not np.all(np.isfinite(function(*args))):
-        raise ValueError('supplied function %s does not have closure against '
-                         'zeros in argument vectors.' % name)
-    args = [-1 * np.ones(10) for _ in range(arity)]
-    if not np.all(np.isfinite(function(*args))):
-        raise ValueError('supplied function %s does not have closure against '
-                         'negatives in argument vectors.' % name)
 
     if wrap:
         return _Function(function=wrap_non_picklable_objects(function),
