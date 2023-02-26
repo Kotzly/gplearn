@@ -288,8 +288,8 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
         if sample_weight is not None:
             sample_weight = _check_sample_weight(sample_weight, X)
 
+        # X, y = self._validate_data(X, y, y_numeric=False)
         if isinstance(self, ClassifierMixin):
-            X, y = self._validate_data(X, y, y_numeric=False)
             check_classification_targets(y)
 
             if self.class_weight:
@@ -307,9 +307,6 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                                  "classes are required."
                                  % n_trim_classes)
             self.n_classes_ = len(self.classes_)
-
-        else:
-            X, y = self._validate_data(X, y, y_numeric=True)
 
         hall_of_fame = self.hall_of_fame
         if hall_of_fame is None:

@@ -34,29 +34,48 @@ def ArgSampler():
             }
 
             samples.append(
-                {**args, **kwargs}
+                [args, kwargs]
             )
         return samples
 
+def ConstantFunctionSampler():
 
-class ConstantFNInput(_Function):
+    def __init__(self, function, name, arg_sampler):
+        self.function = function
+        self.name = name
+        self.arg_sampler = arg_sampler
 
-    def __init__(self, function, name, args, kwargs, output_type=None):
-        super(_Function, self).__init__(
-            self,
+    def sample(self, random_state=None, seed=0):
+        args, kwargs = self.arg_samples.sample(random_state=random_state, n=1, seed=seed)[0]
+        fn = _ConstantFunction(
+            function=self.function,
+            args=args,
+            kwargs=kwargs
+        )
+        return fn
+
+
+class _ConstantFunction(_Function):
+
+    def __init__(self, function, name, args=None, kwargs=None, output_type=None):
+        super(_ConstantFunction, self).__init__(
             function,
             name,
             0,
             input_types=None,
             output_type=output_type
         )
-        self.args = args
-        self.kwargs = kwargs
+        self.args = args or list()
+        self.kwargs = kwargs or dict()
     
     @property
     def value(self):
-        value = self.fn(*self.args, **self.kwargs)
+        value = self.function(*self.args, **self.kwargs)
         return value
+
+    
+    def __call__(self):
+        return self.value
 
 
 class BaseInputs(ABC):
